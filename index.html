@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellar Lane</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            background: #050510;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        h1 {
+            margin: 5px 0;
+            font-size: 1.8rem;
+            letter-spacing: 2px;
+            color: #00ffcc;
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+        }
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 600px;
+            background: linear-gradient(to bottom, #03030f, #15062a);
+            border: 3px solid #00ffcc;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(5, 5, 16, 0.95);
+            transition: opacity 0.3s ease;
+            padding: 15px;
+            text-align: center;
+            z-index: 10;
+        }
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        button {
+            background: #00ffcc;
+            color: #050510;
+            border: none;
+            padding: 8px 18px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 8px;
+            box-shadow: 0 4px 10px rgba(0, 255, 204, 0.4);
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #00b38a;
+            transform: scale(1.05);
+        }
+        input {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 2px solid #00ffcc;
+            background: #12122b;
+            color: #fff;
+            font-size: 1rem;
+            text-align: center;
+            margin-bottom: 5px;
+            width: 80%;
+        }
+        .skin-badge {
+            font-size: 0.85rem;
+            background: rgba(0, 255, 204, 0.2);
+            padding: 4px 10px;
+            border-radius: 20px;
+            margin-bottom: 6px;
+            color: #00ffcc;
+            border: 1px solid #00ffcc;
+        }
+        #top-bar {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            font-weight: bold;
+            z-index: 5;
+            pointer-events: none;
+        }
+        #speed-alert {
+            position: absolute;
+            top: 40px;
+            width: 100%;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #00ffcc;
+            font-weight: bold;
+            text-shadow: 0 0 8px rgba(0, 255, 204, 0.6);
+            z-index: 5;
+            display: none;
+            pointer-events: none;
+        }
+        .leaderboard-list {
+            list-style: none;
+            padding: 0;
+            margin: 5px 0;
+            width: 100%;
+            max-height: 140px;
+            overflow-y: auto;
+            font-size: 0.85rem;
+            text-align: left;
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+        .leaderboard-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .leaderboard-list::-webkit-scrollbar-thumb {
+            background: #00ffcc;
+            border-radius: 3px;
+        }
+        .leaderboard-list li {
+            background: rgba(255, 255, 255, 0.04);
+            padding: 4px 8px;
+            margin-bottom: 2px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+        }
+        #emoji-rain {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 2;
+        }
+        .falling-emoji {
+            position: absolute;
+            top: -30px;
+            font-size: 1.4rem;
+            animation: fall linear infinite;
+        }
+        @keyframes fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(630px) rotate(360deg); opacity: 0.2; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>STELLAR LANE</h1>
+    <div id="game-container">
+        <div id="top-bar">
+            <span id="score-display">Skor: 0</span>
+            <span id="time-display">Waktu: 00:00</span>
+            <span id="skin-indicator">Astronot</span>
+        </div>
+        <div id="speed-alert">✨ KECEPATAN MENINGKAT HALUS (10s) ✨</div>
+
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+
+        <!-- Menu Utama -->
+        <div id="start-screen" class="ui-layer">
+            <h2>STELLAR LANE</h2>
+            <div id="name-input-container" style="width: 100%;">
+                <input type="text" id="player-name" placeholder="Masukkan Nickname (Wajib)" maxlength="12">
+                <div id="name-error" style="color: #ff4757; font-size: 0.75rem; margin-bottom: 6px; display: none;">Nama wajib diisi untuk terbang!</div>
+            </div>
+            <div id="welcome-message" style="font-size: 0.95rem; color: #00ffcc; margin-bottom: 4px; font-weight: bold; display: none;"></div>
+            
+            <div class="skin-badge" id="current-skin-desc">Skin Aktif: Astronot (Default)</div>
+            <p style="font-size: 0.7rem; color: #aaa; margin-bottom: 6px; line-height: 1.25;">
+                🚀 <b>Kontrol:</b> Ketuk bebas di layar untuk pindah jalur!<br>
+                ⚡ <b>Boost Lembut:</b> Naik sedikit selama 10 detik tiap kelipatan 100!<br>
+                🏆 <b>Skin:</b> Robot (Top 300) | Alien (Top 150) | Ksatria (Top 50)
+            </p>
+            <button onclick="startGame()">Mulai Terbang</button>
+            <button style="background:#ff4757; color:#fff;" onclick="toggleAudio()" id="audio-btn">Musik & Suara: ON</button>
+        </div>
+
+        <!-- Layar Game Over -->
+        <div id="gameover-screen" class="ui-layer hidden">
+            <div id="emoji-rain"></div>
+            <h2 style="color: #ff4757; z-index:3; position:relative; margin: 5px 0;">MISI GAGAL</h2>
+            <p id="final-score" style="z-index:3; position:relative; margin: 3px 0;">Skor Kamu: 0</p>
+            <p id="final-time" style="z-index:3; position:relative; margin: 3px 0; font-size: 0.9rem; color: #fffa65;"></p>
+            <p id="rank-achieved" style="font-size: 0.85rem; color: #00ffcc; z-index:3; position:relative; margin: 3px 0;"></p>
+            
+            <h4 style="margin: 4px 0; z-index:3; position:relative; font-size: 0.9rem;">Papan Peringkat Global</h4>
+            <ul class="leaderboard-list" id="leaderboard" style="z-index:3; position:relative;"></ul>
+
+            <button onclick="restartGameFromGameOver()" style="z-index:3; position:relative;">Main Lagi</button>
+            <button style="background:#374151; color:#fff; font-size:0.8rem; padding:5px 10px; z-index:3; position:relative;" onclick="backToMenu()">Pilih Skin / Menu</button>
+        </div>
+    </div>
+
+<script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let score = 0;
+    let gameSpeed = 3.5;
+    let normalSpeed = 3.5;
+    let isBoostActive = false;
+    let boostTimer = null;
+    let lastBoostScore = 0;
+
+    let secondsElapsed = 0;
+    let timerInterval = null;
+
+    let isPlaying = false;
+    let soundEnabled = true;
+    let playerName = "";
+    let playerRank = 999;
+    let activeSkin = "Astronot";
+    let hasShield = false;
+    let hasPlayedBefore = false;
+
+    window.addEventListener("DOMContentLoaded", () => {
+        let savedName = localStorage.getItem("stellar_lane_player");
+        if (savedName && savedName.trim() !== "") {
+            playerName = savedName;
+            document.getElementById("name-input-container").style.display = "none";
+            let welcomeEl = document.getElementById("welcome-message");
+            welcomeEl.innerText = "Pilot: " + playerName;
+            welcomeEl.style.display = "block";
+        }
+    });
+
+    const lanes = [200, 400]; 
+    let currentLaneIndex = 1;
+
+    let player = {
+        x: 60,
+        y: lanes[currentLaneIndex],
+        width: 36,
+        height: 36,
+        targetY: lanes[currentLaneIndex]
+    };
+
+    let obstacles = [];
+    let stars = [];
+    let frameCount = 0;
+
+    let audioCtx = null;
+    let musicInterval = null;
+
+    for(let i=0; i<60; i++) {
+        stars.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: Math.random() * 2 + 0.5,
+            speed: Math.random() * 1.5 + 0.5
+        });
+    }
+
+    let leaderboardData = [
+        { name: "GalacticKing", score: 140, skin: "Ksatria" },
+        { name: "StellarPro", score: 95, skin: "Ksatria" },
+        { name: "AstroBoy", score: 45, skin: "Alien" },
+        { name: "SpaceRunner", score: 20, skin: "Robot" },
+        { name: "NovaX", score: 10, skin: "Astronot" },
+        { name: "StellarPilot99", score: 8, skin: "Astronot" }
+    ];
+
+    canvas.addEventListener("click", () => {
+        if (!isPlaying) return;
+        toggleLane();
+    });
+
+    window.addEventListener("keydown", (e) => {
+        if (!isPlaying) return;
+        if (e.code === "Space" || e.code === "ArrowUp" || e.code === "ArrowDown" || e.code === "KeyW" || e.code === "KeyS") {
+            toggleLane();
+        }
+    });
+
+    function toggleLane() {
+        currentLaneIndex = 1 - currentLaneIndex;
+        player.targetY = lanes[currentLaneIndex];
+        playSound(500, 0.06, 'sine');
+    }
+
+    function toggleAudio() {
+        soundEnabled = !soundEnabled;
+        document.getElementById("audio-btn").innerText = soundEnabled ? "Musik & Suara: ON" : "Musik & Suara: OFF";
+        document.getElementById("audio-btn").style.background = soundEnabled ? "#ff4757" : "#4b5563";
+        if (!soundEnabled && musicInterval) {
+            clearInterval(musicInterval);
+            musicInterval = null;
+        } else if (soundEnabled && isPlaying) {
+            startBGM();
+        }
+    }
+
+    function initAudioContext() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    function playSound(freq, duration, type = 'sine') {
+        if (!soundEnabled) return;
+        try {
+            initAudioContext();
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = freq;
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            osc.stop(audioCtx.currentTime + duration);
+        } catch(e) {}
+    }
+
+    function startBGM() {
+        if (!soundEnabled || musicInterval) return;
+        const notes = [220, 261.63, 329.63, 392.00, 440, 523.25];
+        let noteIdx = 0;
+        musicInterval = setInterval(() => {
+            if (!isPlaying || !soundEnabled) return;
+            try {
+                initAudioContext();
+                let osc = audioCtx.createOscillator();
+                let gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.value = notes[noteIdx % notes.length];
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.4);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.4);
+                noteIdx++;
+            } catch(e) {}
+        }, 350);
+    }
+
+    function formatTime(totalSeconds) {
+        let mins = Math.floor(totalSeconds / 60);
+        let secs = totalSeconds % 60;
+        return (mins < 10 ? "0" + mins : mins) + ":" + (secs < 10 ? "0" + secs : secs);
+    }
+
+    function startGame() {
+        initAudioContext();
+        
+        if (!playerName || playerName.trim() === "") {
+            let inputName = document.getElementById("player-name").value.trim();
+            if (inputName === "") {
+                document.getElementById("name-error").style.display = "block";
+                return;
+            } else {
+                document.getElementById("name-error").style.display = "none";
+                playerName = inputName;
+                localStorage.setItem("stellar_lane_player", playerName);
+            }
+        }
+
+        let existing = leaderboardData.find(p => p.name.toLowerCase() === playerName.toLowerCase());
+        if (existing && existing.name !== playerName) {
+            playerName += "_" + Math.floor(Math.random() * 90);
+        }
+
+        document.getElementById("start-screen").classList.add("hidden");
+        resetGameVars();
+        isPlaying = true;
+        startBGM();
+
+        secondsElapsed = 0;
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (isPlaying) {
+                secondsElapsed++;
+                document.getElementById("time-display").innerText = "Waktu: " + formatTime(secondsElapsed);
+            }
+        }, 1000);
+
+        loop();
+    }
+
+    function resetGameVars() {
+        score = 0;
+        normalSpeed = 3.5;
+        gameSpeed = 3.5;
+        isBoostActive = false;
+        boostTimer = null;
+        lastBoostScore = 0;
+        currentLaneIndex = 1;
+        player.y = lanes[currentLaneIndex];
+        player.targetY = lanes[currentLaneIndex];
+        obstacles = [];
+        frameCount = 0;
+        hasShield = false;
+        secondsElapsed = 0;
+        document.getElementById("time-display").innerText = "Waktu: 00:00";
+        document.getElementById("speed-alert").style.display = "none";
+    }
+
+    function restartGameFromGameOver() {
+        document.getElementById("gameover-screen").classList.add("hidden");
+        resetGameVars();
+        isPlaying = true;
+        hasPlayedBefore = true;
+        startBGM();
+
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (isPlaying) {
+                secondsElapsed++;
+                document.getElementById("time-display").innerText = "Waktu: " + formatTime(secondsElapsed);
+            }
+        }, 1000);
+
+        loop();
+    }
+
+    function backToMenu() {
+        document.getElementById("gameover-screen").classList.add("hidden");
+        if (musicInterval) {
+            clearInterval(musicInterval);
+            musicInterval = null;
+        }
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+        document.getElementById("start-screen").classList.remove("hidden");
+        hasPlayedBefore = true;
+    }
+
+    function updateSkinByRank(rank) {
+        if (rank <= 50) {
+            activeSkin = "Ksatria Galaksi";
+        } else if (rank <= 150) {
+            activeSkin = "Alien Hijau";
+        } else if (rank <= 300) {
+            activeSkin = "Robot Penjelajah";
+        } else {
+            activeSkin = "Astronot (Default)";
+        }
+        document.getElementById("skin-indicator").innerText = activeSkin;
+        document.getElementById("current-skin-desc").innerText = "Skin Aktif: " + activeSkin + " (Peringkat #" + rank + ")";
+    }
+
+    function calculateRankAndSubmit(finalScore) {
+        if (timerInterval) clearInterval(timerInterval);
+
+        let tempLeaderboard = [...leaderboardData];
+        let index = tempLeaderboard.findIndex(p => p.name === playerName);
+        
+        if (index !== -1) {
+            if (finalScore > tempLeaderboard[index].score) {
+                tempLeaderboard[index].score = finalScore;
+            }
+        } else {
+            tempLeaderboard.push({ name: playerName, score: finalScore, skin: activeSkin });
+        }
+
+        tempLeaderboard.sort((a, b) => b.score - a.score);
+
+        let myNewRank = tempLeaderboard.findIndex(p => p.name === playerName) + 1;
+        playerRank = myNewRank === 0 ? tempLeaderboard.length + 1 : myNewRank;
+
+        leaderboardData = tempLeaderboard;
+        updateSkinByRank(playerRank);
+
+        let listHTML = "";
+        leaderboardData.forEach((p, idx) => {
+            let isCurrentPlayer = p.name === playerName ? "color: #00ffcc; font-weight: bold;" : "";
+            listHTML += `<li style="${isCurrentPlayer}"><span>${idx + 1}. ${p.name}</span> <strong>${p.score} pts</strong></li>`;
+        });
+        document.getElementById("leaderboard").innerHTML = listHTML;
+        
+        createEmojiRain();
+    }
+
+    function createEmojiRain() {
+        const container = document.getElementById("emoji-rain");
+        container.innerHTML = "";
+        const emojis = ["⭐", "☄️", "✨", "🌌", "🚀"];
+        for (let i = 0; i < 15; i++) {
+            let el = document.createElement("div");
+            el.className = "falling-emoji";
+            el.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+            el.style.left = Math.random() * 100 + "%";
+            el.style.animationDuration = (Math.random() * 2 + 1.5) + "s";
+            el.style.animationDelay = (Math.random() * 1) + "s";
+            container.appendChild(el);
+        }
+    }
+
+    function spawnObstacle() {
+        let randomLaneIdx = Math.floor(Math.random() * lanes.length);
+        obstacles.push({
+            x: canvas.width,
+            y: lanes[randomLaneIdx],
+            width: 34,
+            height: 26,
+            speed: gameSpeed,
+            scored: false
+        });
+    }
+
+    function update() {
+        if (!isPlaying) return;
+
+        player.y += (player.targetY - player.y) * 0.25;
+
+        stars.forEach(star => {
+            star.x -= star.speed * (gameSpeed / normalSpeed);
+            if (star.x < 0) star.x = canvas.width;
+        });
+
+        frameCount++;
+        if (frameCount % 80 === 0) {
+            spawnObstacle();
+        }
+
+        // --- Peningkatan Kecepatan Halus Selama 10 Detik di Kelipatan Skor 100 ---
+        if (score > 0 && score % 100 === 0 && score !== lastBoostScore && !isBoostActive) {
+            isBoostActive = true;
+            lastBoostScore = score;
+            gameSpeed = normalSpeed + 0.8; // Naik sedikit saja secara halus
+            document.getElementById("speed-alert").style.display = "block";
+            playSound(750, 0.2, 'sine');
+
+            // Berlangsung selama 10 detik (10000ms), lalu kembali ke normal
+            boostTimer = setTimeout(() => {
+                gameSpeed = normalSpeed;
+                isBoostActive = false;
+                document.getElementById("speed-alert").style.display = "none";
+            }, 10000);
+        }
+
+        // Kenaikan kecepatan dasar game bertahap yang sangat lembut
+        if (!isBoostActive && frameCount % 400 === 0) {
+            if (normalSpeed < 6.0) normalSpeed += 0.15;
+          gameSpeed = normalSpeed;
+        }
+
+        if (!hasPlayedBefore && score >= 80 && score <= 100 && !hasShield) {
+            hasShield = true;
+            playSound(800, 0.2, 'square');
+        } else if (hasPlayedBefore && score > 100 && !hasShield) {
+            hasShield = true;
+            playSound(800, 0.2, 'square');
+        }
+
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            obstacles[i].x -= gameSpeed;
+
+            if (!obstacles[i].scored && obstacles[i].x + obstacles[i].width < player.x) {
+                score += 1;
+                obstacles[i].scored = true;
+                playSound(650, 0.05);
+            }
+
+            if (
+                player.x < obstacles[i].x + obstacles[i].width - 6 &&
+                player.x + player.width - 6 > obstacles[i].x &&
+                Math.abs(player.y - obstacles[i].y) < 25
+            ) {
+                if (hasShield) {
+                    hasShield = false;
+                    playSound(300, 0.3, 'sawtooth');
+                    obstacles.splice(i, 1);
+                    continue;
+                } else {
+                    isPlaying = false;
+                    if (musicInterval) {
+                        clearInterval(musicInterval);
+                        musicInterval = null;
+                    }
+                    if (boostTimer) clearTimeout(boostTimer);
+                    playSound(110, 0.4, 'sawtooth');
+                    calculateRankAndSubmit(score);
+                    document.getElementById("final-score").innerText = "Skor Kamu: " + score;
+                    document.getElementById("final-time").innerText = "Waktu Bertahan: " + formatTime(secondsElapsed);
+                    document.getElementById("rank-achieved").innerText = "Peringkat Kamu: #" + playerRank + " (" + activeSkin + ")";
+                    document.getElementById("gameover-screen").classList.remove("hidden");
+                }
+            }
+
+            if (obstacles[i].x + obstacles[i].width < 0) {
+                obstacles.splice(i, 1);
+            }
+        }
+
+        document.getElementById("score-display").innerText = "Skor: " + score;
+    }
+
+    function drawPixelPlayer(x, y, skin) {
+        let bodyColor = "#00ffcc"; 
+        let suitColor = "#ffffff";
+        let visorColor = "#fffa65";
+
+        if (skin.includes("Ksatria")) {
+            bodyColor = "#ff4757";
+            suitColor = "#2f3542";
+            visorColor = "#ffa502";
+        } else if (skin.includes("Alien")) {
+            bodyColor = "#2ed573";
+            suitColor = "#1e90ff";
+            visorColor = "#ffffff";
+        } else if (skin.includes("Robot")) {
+            bodyColor = "#ffa502";
+            suitColor = "#747d8c";
+            visorColor = "#ff4757";
+        }
+
+        let renderY = y - 18;
+
+        if (hasShield) {
+            ctx.strokeStyle = "#00ffcc";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x + 18, renderY + 16, 26, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        ctx.fillStyle = suitColor;
+        ctx.fillRect(x + 6, renderY, 24, 16);
+        ctx.fillStyle = visorColor;
+        ctx.fillRect(x + 14, renderY + 4, 10, 8); 
+
+        ctx.fillStyle = bodyColor;
+        ctx.fillRect(x + 4, renderY + 16, 28, 16);
+    }
+
+    function drawPixelBird(x, y) {
+        let renderY = y - 13;
+        ctx.fillStyle = "#ff6b81";
+        ctx.fillRect(x, renderY + 4, 28, 14);
+
+        ctx.fillStyle = "#ffa502";
+        ctx.fillRect(x + 8, renderY, 12, 6);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(x + 20, renderY + 6, 4, 4);
+        ctx.fillStyle = "#ffa502";
+        ctx.fillRect(x + 28, renderY + 8, 4, 4);
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "#ffffff";
+        stars.forEach(star => {
+            ctx.globalAlpha = Math.random() * 0.7 + 0.3;
+            ctx.fillRect(star.x, star.y, star.size, star.size);
+        });
+        ctx.globalAlpha = 1.0;
+
+        lanes.forEach((laneY, idx) => {
+            ctx.strokeStyle = (currentLaneIndex === idx) ? "rgba(0, 255, 204, 0.7)" : "rgba(255, 255, 204, 0.1)";
+            ctx.lineWidth = (currentLaneIndex === idx) ? 3 : 1;
+            ctx.setLineDash([8, 8]);
+            ctx.beginPath();
+            ctx.moveTo(25, laneY);
+            ctx.lineTo(canvas.width - 25, laneY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        });
+
+        drawPixelPlayer(player.x, player.y, activeSkin);
+
+        obstacles.forEach(obs => {
+            drawPixelBird(obs.x, obs.y);
+        });
+    }
+
+    function loop() {
+        if (!isPlaying) return;
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+</script>
+
+</body>
+</html>
